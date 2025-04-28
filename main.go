@@ -24,6 +24,7 @@ func main() {
 	mux.HandleFunc("POST /user", handleCreateUser)
 	mux.HandleFunc("GET /user/{id}", handleGetUser)
 	mux.HandleFunc("GET /user", handleGetUsers)
+	mux.HandleFunc("DELETE /user/{id}", handleDeleteUser)
 
 	fmt.Println("listening on port:8080")
 
@@ -87,7 +88,7 @@ func handleGetUser(w http.ResponseWriter, r *http.Request) {
 
 func handleGetUsers(w http.ResponseWriter, r *http.Request) {
 
-	var users []User
+	var users = make([]User, 0)
 
 	cacheMutex.RLock()
 	for _, value := range cacheUser {
@@ -96,7 +97,8 @@ func handleGetUsers(w http.ResponseWriter, r *http.Request) {
 
 	cacheMutex.RUnlock()
 
-	j, err := json.Marshal(users)
+	//j, err := json.Marshal(users)
+	err := json.NewEncoder(w).Encode(users)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -105,6 +107,24 @@ func handleGetUsers(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
-	w.Write(j)
+	//w.Write(j)
+
+}
+
+func handleDeleteUser(w http.ResponseWriter, r *http.Request) {
+
+	id, err := strconv.Atoi(r.PathValue("id"))
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	cacheMutex.Lock()
+	delete(cacheUser, id)
+	cacheMutex.Unlock()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusNoContent)
 
 }
